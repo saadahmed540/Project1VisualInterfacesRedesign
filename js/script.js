@@ -13,6 +13,19 @@ Promise.all([
         console.error("GeoJSON conversion failed: Missing 'counties' in TopoJSON file.");
         return;
     }
+    let brushingEnabled = false; // At the top, outside of the functions
+
+let currentData = data;
+let currentAttr = "elderly_percentage"; // or whatever the default attribute is
+//let geoJSON = topojson.feature(geoData, geoData.objects.counties);
+
+const colorMapping = {
+    "elderly_percentage": d3.interpolateOranges,
+    "percent_no_health_insurance": d3.interpolateWarm,
+    "median_household_income": d3.interpolateBrBG,
+    "education_less_than_high_school_percent": d3.interpolateMagma
+};
+
  
     data.forEach(d => {
         d.cnty_fips = d.cnty_fips.toString().padStart(5, "0");
@@ -37,9 +50,15 @@ Promise.all([
  });
  
  function updateVisualizations(xAttr, yAttr) {
+
      if(yAttr==undefined){
          yAttr="elderly_percentage";
      }
+
+     currentData = data;
+    currentAttr = yAttr;
+
+
      d3.select("#histogram-elderly").selectAll("*").remove();
      d3.select("#map-elderly").selectAll("*").remove();
      d3.select("#map-income").selectAll("*").remove();
@@ -54,7 +73,7 @@ Promise.all([
      let colorScheme = colorMapping[yAttr] || "Greys";
  
      if (data.some(d => d[yAttr] > 0)) {
-         createHistogram(data, yAttr, "#histogram-elderly", `${yAttr.replace(/_/g, " ")} (%)`, "Reds");
+        createHistogram(data, yAttr, "#histogram-elderly", `${yAttr.replace(/_/g, " ")} (%)`, "Reds", geoJSON);
          createScatterPlot(data, xAttr, yAttr, "#scatterplot");  
      } else {
          d3.select("#histogram-elderly").append("p").text("No valid data available for histogram.");
@@ -147,20 +166,8 @@ Promise.all([
     svg.select(".x-label").text(attr.replace(/_/g, " "));
     svg.select(".y-label").text("Frequency");
 
-    // === Add brushing before drawing bars ===
-    const brush = d3.brushX()
-        .extent([[margin.left, margin.top], [width - margin.right, height - margin.bottom]])
-        .on("brush end", brushed);
+    const selectedBins = new Set();
 
-    svg.selectAll(".brush").remove(); // remove old brushes
-    svg.append("g")
-        .attr("class", "brush")
-        .call(brush)
-        .select(".overlay")
-        .style("cursor", "crosshair") // good UX signal
-        .style("fill-opacity", 0); // keep it invisible, tooltips pass through
-
-    // Draw bars on top of brush
     const bars = svg.selectAll("rect").data(bins);
 
     bars.exit()
@@ -192,19 +199,36 @@ Promise.all([
             d3.select(this).transition().duration(200).attr("opacity", 0.8);
             tooltip.style("display", "none");
         })
+        .on("click", function (event, d) {
+            const binId = `${d.x0}-${d.x1}`;
+            const isSelected = selectedBins.has(binId);
+
+            if (isSelected) {
+                selectedBins.delete(binId);
+                d3.select(this).attr("stroke", null);
+            } else {
+                selectedBins.add(binId);
+                d3.select(this).attr("stroke", "black").attr("stroke-width", 2);
+            }
+
+            // Filter data across all selected bins
+            const filtered = data.filter(row =>
+                Array.from(selectedBins).some(bin => {
+                    const [x0, x1] = bin.split("-").map(Number);
+                    return row[attr] >= x0 && row[attr] < x1;
+                })
+            );
+
+            const finalData = selectedBins.size > 0 ? filtered : data;
+
+            createScatterPlot(finalData, "elderly_percentage", attr, "#scatterplot");
+            createChoroplethMap(finalData, geoJSON, attr, "#map-elderly", `${attr.replace(/_/g, " ")} (%)`, color);
+        })
         .transition().duration(2000)
         .attr("y", d => y(d.length))
         .attr("height", d => y(0) - y(d.length));
-
-    function brushed(event) {
-        if (!event.selection) return;
-        const [x0, x1] = event.selection.map(x.invert);
-        const filtered = data.filter(d => d[attr] >= x0 && d[attr] <= x1);
-
-        createScatterPlot(filtered, "elderly_percentage", attr, "#scatterplot");
-        createChoroplethMap(filtered, geoJSON, attr, "#map-elderly", `${attr.replace(/_/g, " ")} (%)`, color);
-    }
 }
+
 
 
  
@@ -324,106 +348,187 @@ Promise.all([
  function createChoroplethMap(data, geoData, attr, container, title, colorScheme) {
     d3.select(container).selectAll("*").remove();
     const width = 600, height = 600;
-    const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("display", "none");
- 
-    geoData.features.forEach(feature => {
+    const tooltip = d3.select("body").select(".tooltip").empty()
+        ? d3.select("body").append("div").attr("class", "tooltip").style("display", "none")
+        : d3.select("body").select(".tooltip");
+
+    const geoJSON = geoData;
+
+    geoJSON.features.forEach(feature => {
         let county = data.find(d => d.cnty_fips === feature.id);
-        feature.properties.value = county ? county[attr] : 0;
+        feature.properties.value = county ? county[attr] : undefined;
         feature.properties.name = county ? county.display_name : "Unknown County";
     });
- 
-    const extentValues = d3.extent(data, d => d[attr]);
- 
-    if (!extentValues || extentValues[0] === undefined || extentValues[1] === undefined) {
-        //console.error(`Invalid data for attribute: ${attr}`);
+
+    const validValues = geoJSON.features
+        .map(d => d.properties.value)
+        .filter(v => v !== undefined);
+
+    const extentValues = d3.extent(validValues);
+    if (!extentValues[0] && !extentValues[1]) {
         d3.select(container).append("p").text("No valid data available for this attribute.");
         return;
     }
- 
-    const svg = d3.select(container).append("svg").attr("width", width).attr("height", height);
-    const projection = d3.geoAlbersUsa().fitSize([width, height], geoData);
+
+    const svg = d3.select(container).append("svg")
+        .attr("width", width)
+        .attr("height", height);
+
+    const projection = d3.geoAlbersUsa().fitSize([width, height], geoJSON);
     const path = d3.geoPath().projection(projection);
     const colorScale = d3.scaleSequential(colorScheme).domain(extentValues);
-    // === Legend Setup ===
-const legendWidth = 300;
-const legendHeight = 10;
-const legendX = width / 2 - legendWidth / 2;
-const legendY = height - 30;  // lower it a bit more
 
-// Gradient definition
-const defs = svg.append("defs");
-const linearGradient = defs.append("linearGradient")
-    .attr("id", "legend-gradient");
+    // === Legend ===
+    const legendWidth = 300;
+    const legendHeight = 10;
+    const legendX = width / 2 - legendWidth / 2;
+    const legendY = height - 30;
 
-linearGradient.selectAll("stop")
-    .data(d3.range(0, 1.01, 0.01))
-    .enter().append("stop")
-    .attr("offset", d => `${d * 100}%`)
-    .attr("stop-color", d => colorScale(extentValues[0] + d * (extentValues[1] - extentValues[0])));
+    const defs = svg.append("defs");
+    const linearGradient = defs.append("linearGradient").attr("id", "legend-gradient");
 
-// Gradient rectangle
-svg.append("rect")
-    .attr("x", legendX)
-    .attr("y", legendY)
-    .attr("width", legendWidth)
-    .attr("height", legendHeight)
-    .style("fill", "url(#legend-gradient)");
+    linearGradient.selectAll("stop")
+        .data(d3.range(0, 1.01, 0.01))
+        .enter().append("stop")
+        .attr("offset", d => `${d * 100}%`)
+        .attr("stop-color", d => colorScale(extentValues[0] + d * (extentValues[1] - extentValues[0])));
 
-// Text label above
-svg.append("text")
-    .attr("x", width / 2)
-    .attr("y", legendY - 10)
-    .attr("text-anchor", "middle")
-    .style("font-size", "14px")
-    .text(title);
+    svg.append("rect")
+        .attr("x", legendX)
+        .attr("y", legendY)
+        .attr("width", legendWidth)
+        .attr("height", legendHeight)
+        .style("fill", "url(#legend-gradient)");
 
-// "Low" and "High" labels
-svg.append("text")
-    .attr("x", legendX)
-    .attr("y", legendY + 25)
-    .attr("text-anchor", "start")
-    .style("font-size", "12px")
-    .text("Low");
+    svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", legendY - 10)
+        .attr("text-anchor", "middle")
+        .style("font-size", "14px")
+        .text(title);
 
-svg.append("text")
-    .attr("x", legendX + legendWidth)
-    .attr("y", legendY + 25)
-    .attr("text-anchor", "end")
-    .style("font-size", "12px")
-    .text("High");
+    svg.append("text")
+        .attr("x", legendX)
+        .attr("y", legendY + 25)
+        .attr("text-anchor", "start")
+        .style("font-size", "12px")
+        .text("Low");
 
- 
- 
-    svg.selectAll("path").data(geoData.features).enter().append("path")
+    svg.append("text")
+        .attr("x", legendX + legendWidth)
+        .attr("y", legendY + 25)
+        .attr("text-anchor", "end")
+        .style("font-size", "12px")
+        .text("High");
+
+    // === Map Paths ===
+    const mapPaths = svg.selectAll("path").data(geoJSON.features).enter().append("path")
         .attr("d", path)
-        .attr("fill", d => d.properties.value ? colorScale(d.properties.value) : "#ccc")
-        .attr("stroke", "#000").attr("stroke-width", 0.2)
-        .on("mouseover", (event, d) => {
-            tooltip.style("display", "block")
-                .html(`<strong>${d.properties.name}</strong><br>${title}: ${d.properties.value ? d.properties.value.toFixed(2) + '%' : 'No Data'}`)
-                .style("left", (event.pageX + 5) + "px")
-                .style("top", (event.pageY - 28) + "px");
-        })
-        .on("mouseout", () => tooltip.style("display", "none"))
+        .attr("fill", d => d.properties.value !== undefined ? colorScale(d.properties.value) : "#ccc")
+        .attr("stroke", "#000")
+        .attr("stroke-width", 0.2)
         .on("click", (event, d) => {
-            
+            if (brushingEnabled) return;
             d3.selectAll("path").attr("stroke-width", 0.2);
             d3.select(event.target).attr("stroke-width", 2).attr("stroke", "black");
- 
-            
-            let selectedCountyData = data.filter(row => row.cnty_fips === d.id);
-            createHistogram(selectedCountyData, attr, "#histogram-elderly", `${attr.replace(/_/g, " ")} (%)`, "teal");
-            createScatterPlot(selectedCountyData, "elderly_percentage", attr, "#scatterplot");
+
+            const selectedCountyData = data.filter(row => row.cnty_fips === d.id);
+            //createHistogram(selectedCountyData, attr, "#histogram-elderly", `${attr.replace(/_/g, " ")} (%)`, "teal", geoData);
+            //createScatterPlot(selectedCountyData, "elderly_percentage", attr, "#scatterplot");
         });
- 
+
+    // === Toggle Tooltip Events ===
+    if (!brushingEnabled) {
+        mapPaths
+            .on("mouseover", (event, d) => {
+                tooltip.style("display", "block")
+                    .html(`<strong>${d.properties.name}</strong><br>${title}: ${d.properties.value !== undefined ? d.properties.value.toFixed(2) + '%' : 'No Data'}`)
+                    .style("left", (event.pageX + 5) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+            })
+            .on("mouseout", () => tooltip.style("display", "none"));
+    } else {
+        mapPaths.on("mouseover", null).on("mouseout", null); // remove tooltip listeners
+    }
+
+    // === Brushing on Choropleth Map ===
+    const brush = d3.brush()
+        .extent([[0, 0], [width, height]])
+        .on("end", brushEnded);
+
+    const brushGroup = svg.append("g").attr("class", "brush");
+    if (brushingEnabled) {
+        brushGroup.call(brush);
+    }
+
+    function brushEnded(event) {
+        if (!event.selection) return;
+
+        const [[x0, y0], [x1, y1]] = event.selection;
+
+        const selectedFeatures = geoJSON.features.filter(d => {
+            const [cx, cy] = path.centroid(d);
+            return cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1;
+        });
+
+        const selectedData = data.filter(d =>
+            selectedFeatures.some(f => f.id === d.cnty_fips)
+        );
+
+        svg.selectAll("path")
+            .attr("stroke", d => selectedFeatures.includes(d) ? "black" : "#000")
+            .attr("stroke-width", d => selectedFeatures.includes(d) ? 2 : 0.2);
+
+        createHistogram(selectedData, attr, "#histogram-elderly", `${attr.replace(/_/g, " ")} (%)`, "teal", geoData);
+        createScatterPlot(selectedData, "elderly_percentage", attr, "#scatterplot");
+    }
+
     svg.append("text")
         .attr("x", width / 2)
         .attr("y", 20)
         .attr("text-anchor", "middle")
         .style("font-size", "16px")
         .text(title);
- }
- 
+
+
+
+
+}
+
+document.getElementById("toggle-brush").addEventListener("click", function () {
+    brushingEnabled = !brushingEnabled;
+    this.textContent = brushingEnabled ? "Disable Brushing" : "Enable Brushing";
+
+    // Defensive check
+    if (!currentAttr || !geoJSON || !currentData) return;
+
+    // Redraw the map with the updated brushing flag
+    createChoroplethMap(
+        currentData,
+        geoJSON,
+        currentAttr,
+        "#map-elderly",
+        `${currentAttr.replace(/_/g, " ")} (%)`,
+        colorMapping[currentAttr] || d3.interpolateOranges
+    );
+});
+
+document.getElementById("reset-button").addEventListener("click", function () {
+    brushingEnabled = false;
+    document.getElementById("toggle-brush").textContent = "Enable Brushing";
+
+    // Reset dropdowns (optional, you can comment if you want to keep previous selections)
+    document.getElementById("attribute-select").value = "elderly_percentage";
+    document.getElementById("x-attribute-select").value = "elderly_percentage";
+
+    currentData = data;
+    currentAttr = "elderly_percentage";
+
+    // Redraw all visualizations
+    updateVisualizations("elderly_percentage", "elderly_percentage");
+});
+
+
  }).catch(error => {
    console.error("Error loading data:", error);
  });
