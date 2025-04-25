@@ -221,7 +221,7 @@ const colorMapping = {
 
             const finalData = selectedBins.size > 0 ? filtered : data;
 
-            createScatterPlot(selectedData, document.getElementById("x-attribute-select").value, attr, "#scatterplot");
+            createScatterPlot(finalData, document.getElementById("x-attribute-select").value, attr, "#scatterplot");
             createChoroplethMap(finalData, geoJSON, attr, "#map-elderly", `${attr.replace(/_/g, " ")} (%)`, color);
         })
         .transition().duration(2000)
