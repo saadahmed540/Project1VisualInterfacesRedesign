@@ -107,16 +107,14 @@ const colorMapping = {
             .attr("class", "x-label")
             .attr("x", width / 2)
             .attr("y", height - 10)
-            .attr("text-anchor", "middle")
-            .style("font-size", "14px");
+            .attr("text-anchor", "middle");
 
         svg.append("text")
             .attr("class", "y-label")
             .attr("transform", "rotate(-90)")
             .attr("y", 15)
             .attr("x", -height / 2)
-            .attr("text-anchor", "middle")
-            .style("font-size", "14px");
+            .attr("text-anchor", "middle");
     }
 
     const x = d3.scaleLinear()
@@ -125,8 +123,7 @@ const colorMapping = {
 
     const bins = d3.histogram()
         .domain(x.domain())
-        .thresholds(x.ticks(20))
-        (validData.map(d => d[attr]));
+        .thresholds(x.ticks(20))(validData.map(d => d[attr]));
 
     const y = d3.scaleLinear()
         .domain([0, d3.max(bins, d => d.length)]).nice()
@@ -134,17 +131,7 @@ const colorMapping = {
 
     const tooltip = d3.select("body").select(".tooltip");
     if (tooltip.empty()) {
-        d3.select("body")
-            .append("div")
-            .attr("class", "tooltip")
-            .style("display", "none")
-            .style("position", "absolute")
-            .style("background", "rgba(0, 0, 0, 0.8)")
-            .style("color", "white")
-            .style("padding", "8px")
-            .style("border-radius", "5px")
-            .style("font-size", "12px")
-            .style("pointer-events", "none");
+        d3.select("body").append("div").attr("class", "tooltip").style("display", "none");
     }
 
     svg.selectAll(".x-axis").remove();
@@ -163,17 +150,21 @@ const colorMapping = {
         .attr("transform", `translate(${margin.left},0)`)
         .call(d3.axisLeft(y));
 
-    svg.select(".x-label").text(attr.replace(/_/g, " "));
-    svg.select(".y-label").text("Frequency");
+    svg.select(".x-label")
+        .text(attr.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()))
+        .style("font-size", "16px")
+        .style("font-weight", "bold");
+
+    svg.select(".y-label")
+        .text("Frequency")
+        .style("font-size", "16px")
+        .style("font-weight", "bold");
 
     const selectedBins = new Set();
 
     const bars = svg.selectAll("rect").data(bins);
 
-    bars.exit()
-        .transition().duration(500)
-        .attr("height", 0)
-        .remove();
+    bars.exit().transition().duration(500).attr("height", 0).remove();
 
     bars.transition().duration(500)
         .attr("x", d => x(d.x0) + 1)
@@ -211,7 +202,6 @@ const colorMapping = {
                 d3.select(this).attr("stroke", "black").attr("stroke-width", 2);
             }
 
-            // Filter data across all selected bins
             const filtered = data.filter(row =>
                 Array.from(selectedBins).some(bin => {
                     const [x0, x1] = bin.split("-").map(Number);
@@ -222,7 +212,7 @@ const colorMapping = {
             const finalData = selectedBins.size > 0 ? filtered : data;
 
             createScatterPlot(finalData, document.getElementById("x-attribute-select").value, attr, "#scatterplot");
-            createChoroplethMap(finalData, geoJSON, attr, "#map-elderly", `${attr.replace(/_/g, " ")} (%)`, color);
+            createChoroplethMap(finalData, geoJSON, attr, "#map-elderly", `${attr.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())} (%)`, color);
         })
         .transition().duration(2000)
         .attr("y", d => y(d.length))
@@ -230,118 +220,110 @@ const colorMapping = {
 }
 
 
+function createScatterPlot(data, xAttr, yAttr, container) {
+    const validData = data.filter(d => d[xAttr] > 0 && d[yAttr] > 0);
+    if (validData.length === 0) {
+        d3.select(container).html("<p>No data available for scatter plot.</p>");
+        return;
+    }
 
- 
-   
- function createScatterPlot(data, xAttr, yAttr, container) {
-     const validData = data.filter(d => d[xAttr] > 0 && d[yAttr] > 0);
-     if (validData.length === 0) {
-         d3.select(container).html("<p>No data available for scatter plot.</p>");
-         return;
-     }
- 
-     const width = 500, height = 300, margin = { top: 20, right: 50, bottom: 60, left: 70 };
- 
-     let svg = d3.select(container).select("svg");
-     if (svg.empty()) {
-         svg = d3.select(container)
-             .append("svg")
-             .attr("width", width)
-             .attr("height", height);
-         
-         svg.append("text")
-             .attr("class", "x-label")
-             .attr("x", width / 2)
-             .attr("y", height - 10)
-             .attr("text-anchor", "middle")
-             .style("font-size", "14px");
- 
-         svg.append("text")
-             .attr("class", "y-label")
-             .attr("transform", "rotate(-90)")
-             .attr("y", 15)
-             .attr("x", -height / 2)
-             .attr("text-anchor", "middle")
-             .style("font-size", "14px");
-     }
- 
-     const x = d3.scaleLinear()
-         .domain(d3.extent(validData, d => d[xAttr])).nice()
-         .range([margin.left, width - margin.right]);
- 
-     const y = d3.scaleLinear()
-         .domain(d3.extent(validData, d => d[yAttr])).nice()
-         .range([height - margin.bottom, margin.top]);
- 
-     svg.selectAll(".x-axis").remove();
-     svg.selectAll(".y-axis").remove();
- 
-     svg.append("g")
-    .attr("class", "x-axis")
-    .attr("transform", `translate(0,${height - margin.bottom})`)
-    .call(
-        d3.axisBottom(x).ticks(8)  // limit number of ticks
-        .tickFormat(d3.format(".2s"))  // optional: formats like 1K, 2M
-    )
-    .call(g => g.selectAll("text")
-        .attr("transform", "rotate(-30)")
-        .style("text-anchor", "end")
-    );
+    const width = 500, height = 300, margin = { top: 20, right: 50, bottom: 60, left: 70 };
 
-     svg.append("g")
-         .attr("class", "y-axis")
-         .attr("transform", `translate(${margin.left},0)`)
-         .call(d3.axisLeft(y));
- 
-     svg.select(".x-label").text(xAttr.replace(/_/g, " "));
-     svg.select(".y-label").text(yAttr.replace(/_/g, " "));
- 
-     const points = svg.selectAll("circle").data(validData, d => d.cnty_fips);
- 
-     // Removing Old Points
-     points.exit()
-         .transition().duration(200)
-         .attr("r", 0) // Shrink the points
-         .attr("opacity", 0) // Fade out
-         .remove();
- 
-     // Existing Points Move
-     points.transition().duration(200)
-         .attr("cx", d => x(d[xAttr]))
-         .attr("cy", d => y(d[yAttr]))
-         .attr("fill", "teal") 
-         .attr("opacity", 0.8);
- 
-     // New Points Appear
-     points.enter().append("circle")
-         .attr("cx", d => x(d[xAttr]))
-         .attr("cy", d => y(d[yAttr]))
-         .attr("r", 0)  
-         .attr("fill", "teal")
-         .attr("opacity", 0)
-         .transition().duration(500)
-         .attr("r", 8)  
-         .attr("opacity", 0.8);
- 
-     // Brush Function
-     const brush = d3.brush()
-         .extent([[margin.left, margin.top], [width - margin.right, height - margin.bottom]])
-         .on("brush end", function(event) {
-             if (!event.selection) return;
-             const [[x0, y0], [x1, y1]] = event.selection;
-             const selectedData = validData.filter(d => x(d[xAttr]) >= x0 && x(d[xAttr]) <= x1 &&
-                                                        y(d[yAttr]) >= y0 && y(d[yAttr]) <= y1);
- 
-             points.transition().duration(10)
-                 .attr("fill", d => selectedData.includes(d) ? "orange" : "teal"); 
- 
-             createHistogram(selectedData, yAttr, "#histogram-elderly", `${yAttr.replace(/_/g, " ")} (%)`, "teal");
-             createChoroplethMap(selectedData, geoJSON, yAttr, "#map-elderly", `${yAttr.replace(/_/g, " ")} (%)`, "teal");
-         });
- 
-     svg.selectAll(".brush").remove();
-     svg.append("g").attr("class", "brush").call(brush);
- }
+    let svg = d3.select(container).select("svg");
+    if (svg.empty()) {
+        svg = d3.select(container)
+            .append("svg")
+            .attr("width", width)
+            .attr("height", height);
+
+        svg.append("text")
+            .attr("class", "x-label")
+            .attr("x", width / 2)
+            .attr("y", height - 10)
+            .attr("text-anchor", "middle");
+
+        svg.append("text")
+            .attr("class", "y-label")
+            .attr("transform", "rotate(-90)")
+            .attr("y", 15)
+            .attr("x", -height / 2)
+            .attr("text-anchor", "middle");
+    }
+
+    const x = d3.scaleLinear()
+        .domain(d3.extent(validData, d => d[xAttr])).nice()
+        .range([margin.left, width - margin.right]);
+
+    const y = d3.scaleLinear()
+        .domain(d3.extent(validData, d => d[yAttr])).nice()
+        .range([height - margin.bottom, margin.top]);
+
+    svg.selectAll(".x-axis").remove();
+    svg.selectAll(".y-axis").remove();
+
+    svg.append("g")
+        .attr("class", "x-axis")
+        .attr("transform", `translate(0,${height - margin.bottom})`)
+        .call(d3.axisBottom(x).ticks(8).tickFormat(d3.format(".2s")))
+        .call(g => g.selectAll("text")
+            .attr("transform", "rotate(-30)")
+            .style("text-anchor", "end"));
+
+    svg.append("g")
+        .attr("class", "y-axis")
+        .attr("transform", `translate(${margin.left},0)`)
+        .call(d3.axisLeft(y));
+
+    svg.select(".x-label")
+        .text(xAttr.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()))
+        .style("font-size", "16px")
+        .style("font-weight", "bold");
+
+    svg.select(".y-label")
+        .text(yAttr.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()))
+        .style("font-size", "16px")
+        .style("font-weight", "bold");
+
+    const points = svg.selectAll("circle").data(validData, d => d.cnty_fips);
+
+    points.exit().transition().duration(200).attr("r", 0).attr("opacity", 0).remove();
+
+    points.transition().duration(200)
+        .attr("cx", d => x(d[xAttr]))
+        .attr("cy", d => y(d[yAttr]))
+        .attr("fill", "teal")
+        .attr("opacity", 0.8);
+
+    points.enter().append("circle")
+        .attr("cx", d => x(d[xAttr]))
+        .attr("cy", d => y(d[yAttr]))
+        .attr("r", 0)
+        .attr("fill", "teal")
+        .attr("opacity", 0)
+        .transition().duration(500)
+        .attr("r", 8)
+        .attr("opacity", 0.8);
+
+    const brush = d3.brush()
+        .extent([[margin.left, margin.top], [width - margin.right, height - margin.bottom]])
+        .on("brush end", function (event) {
+            if (!event.selection) return;
+            const [[x0, y0], [x1, y1]] = event.selection;
+            const selectedData = validData.filter(d =>
+                x(d[xAttr]) >= x0 && x(d[xAttr]) <= x1 && y(d[yAttr]) >= y0 && y(d[yAttr]) <= y1
+            );
+
+            points.transition().duration(10)
+                .attr("fill", d => selectedData.includes(d) ? "orange" : "teal");
+
+            createHistogram(selectedData, yAttr, "#histogram-elderly", `${yAttr.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())} (%)`, "teal");
+            createChoroplethMap(selectedData, geoJSON, yAttr, "#map-elderly", `${yAttr.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())} (%)`, "teal");
+        });
+
+    svg.selectAll(".brush").remove();
+    svg.append("g").attr("class", "brush").call(brush);
+}
+
  
  
  
