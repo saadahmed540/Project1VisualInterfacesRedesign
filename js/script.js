@@ -221,7 +221,7 @@ const colorMapping = {
 
             const finalData = selectedBins.size > 0 ? filtered : data;
 
-            createScatterPlot(finalData, "elderly_percentage", attr, "#scatterplot");
+            createScatterPlot(selectedData, document.getElementById("x-attribute-select").value, attr, "#scatterplot");
             createChoroplethMap(finalData, geoJSON, attr, "#map-elderly", `${attr.replace(/_/g, " ")} (%)`, color);
         })
         .transition().duration(2000)
@@ -309,7 +309,7 @@ const colorMapping = {
      points.transition().duration(200)
          .attr("cx", d => x(d[xAttr]))
          .attr("cy", d => y(d[yAttr]))
-         .attr("fill", "#ffcc66") 
+         .attr("fill", "teal") 
          .attr("opacity", 0.8);
  
      // New Points Appear
@@ -317,7 +317,7 @@ const colorMapping = {
          .attr("cx", d => x(d[xAttr]))
          .attr("cy", d => y(d[yAttr]))
          .attr("r", 0)  
-         .attr("fill", "#addd8e")
+         .attr("fill", "teal")
          .attr("opacity", 0)
          .transition().duration(500)
          .attr("r", 8)  
@@ -333,10 +333,10 @@ const colorMapping = {
                                                         y(d[yAttr]) >= y0 && y(d[yAttr]) <= y1);
  
              points.transition().duration(10)
-                 .attr("fill", d => selectedData.includes(d) ? "orange" : "#ffcc66"); 
+                 .attr("fill", d => selectedData.includes(d) ? "orange" : "teal"); 
  
              createHistogram(selectedData, yAttr, "#histogram-elderly", `${yAttr.replace(/_/g, " ")} (%)`, "teal");
-             createChoroplethMap(selectedData, geoJSON, yAttr, "#map-elderly", `${yAttr.replace(/_/g, " ")} (%)`, "interpolateOranges");
+             createChoroplethMap(selectedData, geoJSON, yAttr, "#map-elderly", `${yAttr.replace(/_/g, " ")} (%)`, "teal");
          });
  
      svg.selectAll(".brush").remove();
@@ -480,7 +480,8 @@ const colorMapping = {
             .attr("stroke-width", d => selectedFeatures.includes(d) ? 2 : 0.2);
 
         createHistogram(selectedData, attr, "#histogram-elderly", `${attr.replace(/_/g, " ")} (%)`, "teal", geoData);
-        createScatterPlot(selectedData, "elderly_percentage", attr, "#scatterplot");
+        createScatterPlot(selectedData, document.getElementById("x-attribute-select").value, attr, "#scatterplot");
+
     }
 
     svg.append("text")
