@@ -14,7 +14,8 @@ body {
 .sidebar {
     width: 280px;
     background: #2C3E50;
-    color: #ECF0F1;
+    
+    color: #2C3E50;
     padding: 20px;
     display: flex;
     flex-direction: column;
