@@ -1,0 +1,154 @@
+
+/* General Styles */
+body {
+    font-family: 'Lato', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #ECF0F1;
+    color: #2C3E50;
+    display: flex;
+    height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 280px;
+    background: #2C3E50;
+    color: white;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 2px 0px 8px rgba(0, 0, 0, 0.2);
+}
+
+.sidebar h1 {
+    font-size: 22px;
+    margin-bottom: 10px;
+    color: #F39C12;
+}
+
+.sidebar h3 {
+    font-size: 16px;
+    margin-bottom: 10px;
+    color: #E67E22;
+}
+
+.sidebar p {
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+.controls {
+    background: #34495E;
+    padding: 15px;
+    border-radius: 10px;
+    width: 100%;
+    text-align: center;
+}
+
+label {
+    font-size: 16px;
+    display: block;
+    margin-bottom: 8px;
+}
+select {
+    background-color: #ff8c00;
+    color: #fff;
+}
+.sidebar h1 {
+    color: #f39c12;
+}
+select {
+    width: 100%;
+    padding: 8px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+    background-color: #FF8C00;
+    color: white;
+    cursor: pointer;
+    outline: none;
+}
+
+/* Main Content */
+.main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.visualizations {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    width: 100%;
+}
+
+/* Chart & Map Containers */
+.chart-item {
+    width: 100%;
+    max-width: 500px;
+    margin: auto;
+    background: white;
+    padding: 10px;
+    border-radius: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+    max-width: 100%;
+    padding: 20px;
+    border-radius: 20px;
+}
+
+
+.map-item {
+    padding: 20px;
+    height: 700px; /* was 600px */
+    max-width: 100%;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.map {
+    width: 100%;
+    height: 600px;  /* was 500px */
+    padding: 5px;
+    border-radius: 20px;
+}
+
+.chart {
+    width: 100%;
+    height: 400px;
+}
+
+.tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px;
+    border-radius: 5px;
+    font-size: 14px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    transform: translateY(-10px);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    body {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        text-align: center;
+    }
+
+    .visualizations {
+        grid-template-columns: 1fr;
+    }
+}

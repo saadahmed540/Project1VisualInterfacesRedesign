@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>County Health Data Visualization</title>
+<link href="css/styles.css" rel="stylesheet"/>
+<script src="js/d3.v6.min.js"></script>
+<style>
+    body {
+        background-color: #f4f6f9;
+        color: #2c3e50;
+    }
+    .sidebar h1 {
+        color: #f39c12;
+    }
+    .sidebar h3 {
+        color: #e67e22;
+    }
+    .sidebar p {
+        font-size: 14px;
+        margin-bottom: 15px;
+    }
+    .legend {
+        font-size: 14px;
+        color: #34495e;
+        padding: 5px;
+        background-color: #ecf0f1;
+        border-radius: 5px;
+        border: 1px solid #34495e;
+        margin-top: 15px;
+    }
+</style></head>
+<body>
+<!-- Sidebar -->
+<div class="sidebar">
+<h1>County Health Data Visualization</h1>
+<h3>By Saad Ahmed Mohammed</h3>
+<p>Data Source: National Health Data 2024</p>
+<div class="controls" id="controls">
+<label for="attribute-select">Choose an Attribute:</label>
+<select id="attribute-select">
+<option value="elderly_percentage">Elderly Population (%)</option>
+<option value="percent_no_health_insurance">Lack of Health Insurance (%)</option>
+<option value="median_household_income">Median Household Income</option>
+<option value="education_less_than_high_school_percent">Education Less Than High School (%)</option>
+</select>
+<p>Y-Axis Attribute for Scatterplot</p>
+</div>
+</div>
+<!-- Main Content -->
+<div class="main-content">
+<div class="visualizations">
+<div class="chart-item">
+<h2>Histogram</h2>
+<div class="chart" id="histogram-elderly"></div>
+</div>
+<div class="chart-item">
+<label for="x-attribute-select">Choose X-Axis Attribute:</label>
+<select id="x-attribute-select" style="width:50%">
+<option value="elderly_percentage">Elderly Population (%)</option>
+<option value="percent_no_health_insurance">Lack of Health Insurance (%)</option>
+<option value="median_household_income">Median Household Income</option>
+<option value="education_less_than_high_school_percent">Education Less Than High School (%)</option>
+</select>
+<p>X-Axis Attribute for Scatterplot</p>
+<h2>Scatter Plot</h2>
+<div class="chart" id="scatterplot"></div>
+</div>
+<div class="map-item">
+<h2>Choropleth Map</h2>
+<div class="map" id="map-elderly"><div class="legend">Choropleth Map Legend Placeholder</div></div>
+</div>
+</div>
+</div>
+<script src="js/topojson.v3.js"></script>
+<script src="js/script.js"></script>
+</body>
+</html>
