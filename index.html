@@ -1,86 +1,136 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>County Health Data Visualization</title>
-<link href="css/styles.css" rel="stylesheet"/>
-<script src="js/d3.v6.min.js"></script>
-<style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>County Health Data Visualization</title>
+  <link href="css/styles.css" rel="stylesheet"/>
+  <script src="js/d3.v6.min.js"></script>
+  <style>
     body {
-        background-color: #f4f6f9;
-        color: #2c3e50;
+      background-color: #f4f6f9;
+      color: #2c3e50;
+      font-family: Arial, sans-serif;
+      margin: 0;
+    }
+    .sidebar {
+      padding: 20px;
+      background-color: #ffffff;
     }
     .sidebar h1 {
-        color: #f39c12;
+      color: #f39c12;
     }
     .sidebar h3 {
-        color: #e67e22;
+      color: #e67e22;
     }
     .sidebar p {
-        font-size: 14px;
-        margin-bottom: 15px;
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+    .controls {
+      margin-bottom: 20px;
     }
     .legend {
-        font-size: 14px;
-        color: #34495e;
-        padding: 5px;
-        background-color: #ecf0f1;
-        border-radius: 5px;
-        border: 1px solid #34495e;
-        margin-top: 15px;
+      font-size: 14px;
+      color: #34495e;
+      padding: 5px;
+      background-color: #ecf0f1;
+      border-radius: 5px;
+      border: 1px solid #34495e;
+      margin-top: 15px;
     }
-</style></head>
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    .top-row {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      flex-wrap: wrap;
+      width: 100%;
+      max-width: 1300px;
+      margin-bottom: 40px;
+    }
+    .chart-box {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      flex: 1;
+      min-width: 500px;
+      max-width: 600px;
+    }
+    .map-container {
+      width: 100%;
+      max-width: 1300px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    #toggle-brush {
+      float: right;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
 <body>
-<!-- Sidebar -->
-<div class="sidebar">
-<h1>County Health Data Visualization</h1>
-<h3>By Saad Ahmed Mohammed</h3>
-<p>Data Source: National Health Data 2024</p>
-<div class="controls" id="controls">
-<label for="attribute-select">Choose an Attribute:</label>
-<select id="attribute-select">
-<option value="elderly_percentage">Elderly Population (%)</option>
-<option value="percent_no_health_insurance">Lack of Health Insurance (%)</option>
-<option value="median_household_income">Median Household Income</option>
-<option value="education_less_than_high_school_percent">Education Less Than High School (%)</option>
-</select>
-<p>Y-Axis Attribute for Scatterplot</p>
-<button id="reset-button" style="margin-top: 20px;">Reset All Visualizations</button>
+  <div class="sidebar">
+    <h1>County Health Data Visualization</h1>
+    <h3>By Saad Ahmed Mohammed</h3>
+    <p>Data Source: National Health Data 2024</p>
+    <div class="controls" id="controls">
+      <label for="attribute-select">Choose an Attribute:</label>
+      <select id="attribute-select">
+        <option value="elderly_percentage">Elderly Population (%)</option>
+        <option value="percent_no_health_insurance">Lack of Health Insurance (%)</option>
+        <option value="median_household_income">Median Household Income</option>
+        <option value="education_less_than_high_school_percent">Education Less Than High School (%)</option>
+      </select>
+      <p>Y-Axis Attribute for Scatterplot</p>
+      <button id="reset-button" style="margin-top: 10px;">Reset All Visualizations</button>
+    </div>
+  </div>
 
-</div>
+  <div class="main-content">
+    <div class="top-row">
+      <div class="chart-box">
+        <h2>Histogram</h2>
+        <div id="histogram-elderly"></div>
+      </div>
+      <div class="chart-box">
+        <label for="x-attribute-select">Choose X-Axis Attribute:</label>
+        <select id="x-attribute-select" style="width:100%; margin-bottom: 5px;">
+          <option value="elderly_percentage">Elderly Population (%)</option>
+          <option value="percent_no_health_insurance">Lack of Health Insurance (%)</option>
+          <option value="median_household_income">Median Household Income</option>
+          <option value="education_less_than_high_school_percent">Education Less Than High School (%)</option>
+        </select>
+        <p style="text-align:center;">X-Axis Attribute for Scatterplot</p>
+        <h2>Scatter Plot</h2>
+        <div id="scatterplot"></div>
+      </div>
+    </div>
 
-</div>
-<!-- Main Content -->
-<div class="main-content">
-<div class="visualizations">
-<div class="chart-item">
-<h2>Histogram</h2>
-<div class="chart" id="histogram-elderly"></div>
-</div>
-<div class="chart-item">
-<label for="x-attribute-select">Choose X-Axis Attribute:</label>
-<select id="x-attribute-select" style="width:50%">
-<option value="elderly_percentage">Elderly Population (%)</option>
-<option value="percent_no_health_insurance">Lack of Health Insurance (%)</option>
-<option value="median_household_income">Median Household Income</option>
-<option value="education_less_than_high_school_percent">Education Less Than High School (%)</option>
-</select>
-<p>X-Axis Attribute for Scatterplot</p>
-<h2>Scatter Plot</h2>
-<div class="chart" id="scatterplot"></div>
-</div>
-<div class="map-item">
-<h2>Choropleth Map</h2>
-<div style="text-align:right; margin: 10px;">
-    <button id="toggle-brush">Enable Brushing</button>
-</div>
-<div class="map" id="map-elderly"><div class="legend">Choropleth Map Legend Placeholder</div></div>
-</div>
-</div>
-</div>
-<script src="js/topojson.v3.js"></script>
-<script src="js/script.js"></script>
+    <div class="map-container">
+      <h2>Choropleth Map</h2>
+      <div style="text-align:right; margin-bottom: 10px;">
+        <button id="toggle-brush">Enable Brushing</button>
+      </div>
+      <div id="map-elderly">
+        <div class="legend">Choropleth Map Legend Placeholder</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/topojson.v3.js"></script>
+  <script src="js/script.js"></script>
 </body>
 </html>

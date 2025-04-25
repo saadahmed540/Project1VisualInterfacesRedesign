@@ -240,7 +240,7 @@ const colorMapping = {
          return;
      }
  
-     const width = 600, height = 400, margin = { top: 20, right: 50, bottom: 60, left: 70 };
+     const width = 500, height = 300, margin = { top: 20, right: 50, bottom: 60, left: 70 };
  
      let svg = d3.select(container).select("svg");
      if (svg.empty()) {
