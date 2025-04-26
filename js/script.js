@@ -83,10 +83,9 @@ const colorMapping = {
     // createChoroplethMap(data, geoJSON, "median_household_income", "#map-income", "Median Household Income", "Greens");
     createHistogram(data, yAttr, "#histogram-elderly", `${yAttr.replace(/_/g, " ")} (%)`, "Reds", geoJSON);
 
-
     
  }
- 
+
  function createHistogram(data, attr, container, title, color, geoJSON) {
     const validData = data.filter(d => d[attr] > 0);
     if (validData.length === 0) {
@@ -123,7 +122,8 @@ const colorMapping = {
 
     const bins = d3.histogram()
         .domain(x.domain())
-        .thresholds(x.ticks(20))(validData.map(d => d[attr]));
+        .thresholds(x.ticks(20))
+        (validData.map(d => d[attr]));
 
     const y = d3.scaleLinear()
         .domain([0, d3.max(bins, d => d.length)]).nice()
@@ -131,11 +131,23 @@ const colorMapping = {
 
     const tooltip = d3.select("body").select(".tooltip");
     if (tooltip.empty()) {
-        d3.select("body").append("div").attr("class", "tooltip").style("display", "none");
+        d3.select("body")
+            .append("div")
+            .attr("class", "tooltip")
+            .style("display", "none")
+            .style("position", "absolute")
+            .style("background", "rgba(0, 0, 0, 0.8)")
+            .style("color", "white")
+            .style("padding", "8px")
+            .style("border-radius", "5px")
+            .style("font-size", "12px")
+            .style("pointer-events", "none");
     }
 
     svg.selectAll(".x-axis").remove();
     svg.selectAll(".y-axis").remove();
+    svg.selectAll(".bar-label").remove();
+    svg.selectAll(".bar").remove();
 
     svg.append("g")
         .attr("class", "x-axis")
@@ -150,33 +162,32 @@ const colorMapping = {
         .attr("transform", `translate(${margin.left},0)`)
         .call(d3.axisLeft(y));
 
+    // === Formatted Axis Labels ===
+    const formattedAttr = attr.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+
     svg.select(".x-label")
-        .text(attr.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()))
+        .text(formattedAttr)
         .style("font-size", "16px")
-        .style("font-weight", "bold");
+        .style("font-weight", "bold")
+        .style("fill", "#2c3e50");
 
     svg.select(".y-label")
         .text("Frequency")
         .style("font-size", "16px")
-        .style("font-weight", "bold");
+        .style("font-weight", "bold")
+        .style("fill", "#2c3e50");
 
     const selectedBins = new Set();
 
-    const bars = svg.selectAll("rect").data(bins);
-
-    bars.exit().transition().duration(500).attr("height", 0).remove();
-
-    bars.transition().duration(500)
+    svg.selectAll(".bar")
+        .data(bins)
+        .enter()
+        .append("rect")
+        .attr("class", "bar")
         .attr("x", d => x(d.x0) + 1)
         .attr("y", d => y(d.length))
         .attr("width", d => Math.max(0, x(d.x1) - x(d.x0) - 1))
-        .attr("height", d => y(0) - y(d.length));
-
-    bars.enter().append("rect")
-        .attr("x", d => x(d.x0) + 1)
-        .attr("y", height - margin.bottom)
-        .attr("width", d => Math.max(0, x(d.x1) - x(d.x0) - 1))
-        .attr("height", 0)
+        .attr("height", d => y(0) - y(d.length))
         .attr("fill", "#addd8e")
         .attr("opacity", 0.8)
         .on("mouseover", function (event, d) {
@@ -211,13 +222,25 @@ const colorMapping = {
 
             const finalData = selectedBins.size > 0 ? filtered : data;
 
-            createScatterPlot(finalData, document.getElementById("x-attribute-select").value, attr, "#scatterplot");
-            createChoroplethMap(finalData, geoJSON, attr, "#map-elderly", `${attr.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase())} (%)`, color);
-        })
-        .transition().duration(2000)
-        .attr("y", d => y(d.length))
-        .attr("height", d => y(0) - y(d.length));
+            createScatterPlot(finalData, "elderly_percentage", attr, "#scatterplot");
+            createChoroplethMap(finalData, geoJSON, attr, "#map-elderly", `${formattedAttr} (%)`, color);
+        });
+
+    // === Add Data Labels ===
+    svg.selectAll(".bar-label")
+        .data(bins)
+        .enter()
+        .append("text")
+        .attr("class", "bar-label")
+        .attr("x", d => (x(d.x0) + x(d.x1)) / 2)
+        .attr("y", d => y(d.length) - 5)
+        .attr("text-anchor", "middle")
+        .text(d => d.length > 0 ? d.length : "")
+        .style("font-size", "10px")
+        .style("fill", "#333")
+        .style("font-weight", "bold");
 }
+
 
 
 function createScatterPlot(data, xAttr, yAttr, container) {
