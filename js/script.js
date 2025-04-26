@@ -326,12 +326,24 @@ function createScatterPlot(data, xAttr, yAttr, container) {
 
  
  
- 
- function createChoroplethMap(data, geoData, attr, container, title, colorScheme) {
+function createChoroplethMap(data, geoData, attr, container, title, colorScheme) {
     d3.select(container).selectAll("*").remove();
     const width = 600, height = 600;
+
     const tooltip = d3.select("body").select(".tooltip").empty()
-        ? d3.select("body").append("div").attr("class", "tooltip").style("display", "none")
+        ? d3.select("body").append("div")
+            .attr("class", "tooltip")
+            .style("position", "absolute")
+            .style("background", "#ffffff")
+            .style("color", "#2c3e50")
+            .style("padding", "10px")
+            .style("border", "1px solid #ccc")
+            .style("border-radius", "8px")
+            .style("box-shadow", "0px 2px 8px rgba(0, 0, 0, 0.15)")
+            .style("font-family", "sans-serif")
+            .style("font-size", "12px")
+            .style("pointer-events", "none")
+            .style("display", "none")
         : d3.select("body").select(".tooltip");
 
     const geoJSON = geoData;
@@ -360,7 +372,6 @@ function createScatterPlot(data, xAttr, yAttr, container) {
     const path = d3.geoPath().projection(projection);
     const colorScale = d3.scaleSequential(colorScheme).domain(extentValues);
 
-    // === Legend ===
     const legendWidth = 300;
     const legendHeight = 10;
     const legendX = width / 2 - legendWidth / 2;
@@ -369,41 +380,60 @@ function createScatterPlot(data, xAttr, yAttr, container) {
     const defs = svg.append("defs");
     const linearGradient = defs.append("linearGradient").attr("id", "legend-gradient");
 
+    const formattedMapTitle = title
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, l => l.toUpperCase());
+
+    const legendSteps = 6;
+
     linearGradient.selectAll("stop")
-        .data(d3.range(0, 1.01, 0.01))
+        .data(d3.range(0, 1.01, 1 / (legendSteps - 1)))
         .enter().append("stop")
         .attr("offset", d => `${d * 100}%`)
         .attr("stop-color", d => colorScale(extentValues[0] + d * (extentValues[1] - extentValues[0])));
+
+    svg.append("text")
+        .attr("x", width / 2)
+        .attr("y", legendY - 20)
+        .attr("text-anchor", "middle")
+        .style("font-size", "13px")
+        .style("font-weight", "bold")
+        .text(`Distribution of ${formattedMapTitle} (%)`);
 
     svg.append("rect")
         .attr("x", legendX)
         .attr("y", legendY)
         .attr("width", legendWidth)
         .attr("height", legendHeight)
-        .style("fill", "url(#legend-gradient)");
+        .style("fill", "url(#legend-gradient)")
+        .style("stroke", "#ccc")
+        .style("stroke-width", 0.5);
+
+    const tickValues = d3.range(0, legendSteps).map(i =>
+        extentValues[0] + i * (extentValues[1] - extentValues[0]) / (legendSteps - 1)
+    );
+
+    const tickGroup = svg.append("g").attr("class", "legend-ticks");
+
+    tickGroup.selectAll("text")
+        .data(tickValues)
+        .enter()
+        .append("text")
+        .attr("x", (d, i) => legendX + i * (legendWidth / (legendSteps - 1)))
+        .attr("y", legendY + 25)
+        .attr("text-anchor", "middle")
+        .style("font-size", "11px")
+        .text(d => `${d.toFixed(1)}%`);
 
     svg.append("text")
         .attr("x", width / 2)
-        .attr("y", legendY - 10)
+        .attr("y", 30)
         .attr("text-anchor", "middle")
-        .style("font-size", "14px")
-        .text(title);
+        .style("font-size", "20px")
+        .style("font-weight", "bold")
+        .style("fill", "#2c3e50")
+        .text(formattedMapTitle);
 
-    svg.append("text")
-        .attr("x", legendX)
-        .attr("y", legendY + 25)
-        .attr("text-anchor", "start")
-        .style("font-size", "12px")
-        .text("Low");
-
-    svg.append("text")
-        .attr("x", legendX + legendWidth)
-        .attr("y", legendY + 25)
-        .attr("text-anchor", "end")
-        .style("font-size", "12px")
-        .text("High");
-
-    // === Map Paths ===
     const mapPaths = svg.selectAll("path").data(geoJSON.features).enter().append("path")
         .attr("d", path)
         .attr("fill", d => d.properties.value !== undefined ? colorScale(d.properties.value) : "#ccc")
@@ -413,27 +443,37 @@ function createScatterPlot(data, xAttr, yAttr, container) {
             if (brushingEnabled) return;
             d3.selectAll("path").attr("stroke-width", 0.2);
             d3.select(event.target).attr("stroke-width", 2).attr("stroke", "black");
-
-            const selectedCountyData = data.filter(row => row.cnty_fips === d.id);
-            //createHistogram(selectedCountyData, attr, "#histogram-elderly", `${attr.replace(/_/g, " ")} (%)`, "teal", geoData);
-            //createScatterPlot(selectedCountyData, "elderly_percentage", attr, "#scatterplot");
         });
 
-    // === Toggle Tooltip Events ===
     if (!brushingEnabled) {
         mapPaths
             .on("mouseover", (event, d) => {
-                tooltip.style("display", "block")
-                    .html(`<strong>${d.properties.name}</strong><br>${title}: ${d.properties.value !== undefined ? d.properties.value.toFixed(2) + '%' : 'No Data'}`)
-                    .style("left", (event.pageX + 5) + "px")
+                tooltip
+                    .html(`
+                        <div style="font-weight: bold; font-size: 14px; margin-bottom: 5px;">
+                            ${d.properties.name}
+                        </div>
+                        <div style="font-size: 12px;">
+                            ${formattedMapTitle}:
+                            <span style="font-weight: bold; color: #2c3e50;">
+                                ${d.properties.value !== undefined ? d.properties.value.toFixed(2) + '%' : 'No Data'}
+                            </span>
+                        </div>
+                    `)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 28) + "px")
+                    .style("display", "block");
+            })
+            .on("mousemove", (event) => {
+                tooltip
+                    .style("left", (event.pageX + 10) + "px")
                     .style("top", (event.pageY - 28) + "px");
             })
             .on("mouseout", () => tooltip.style("display", "none"));
     } else {
-        mapPaths.on("mouseover", null).on("mouseout", null); // remove tooltip listeners
+        mapPaths.on("mouseover", null).on("mouseout", null);
     }
 
-    // === Brushing on Choropleth Map ===
     const brush = d3.brush()
         .extent([[0, 0], [width, height]])
         .on("end", brushEnded);
@@ -461,22 +501,12 @@ function createScatterPlot(data, xAttr, yAttr, container) {
             .attr("stroke", d => selectedFeatures.includes(d) ? "black" : "#000")
             .attr("stroke-width", d => selectedFeatures.includes(d) ? 2 : 0.2);
 
-        createHistogram(selectedData, attr, "#histogram-elderly", `${attr.replace(/_/g, " ")} (%)`, "teal", geoData);
+        createHistogram(selectedData, attr, "#histogram-elderly", formattedMapTitle + " (%)", "teal", geoData);
         createScatterPlot(selectedData, document.getElementById("x-attribute-select").value, attr, "#scatterplot");
-
     }
-
-    svg.append("text")
-        .attr("x", width / 2)
-        .attr("y", 20)
-        .attr("text-anchor", "middle")
-        .style("font-size", "16px")
-        .text(title);
-
-
-
-
 }
+
+
 
 document.getElementById("toggle-brush").addEventListener("click", function () {
     brushingEnabled = !brushingEnabled;
