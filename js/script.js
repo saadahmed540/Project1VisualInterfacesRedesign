@@ -358,7 +358,7 @@ function createChoroplethMap(data, geoData, attr, container, title, colorScheme)
             .attr("class", "tooltip")
             .style("position", "absolute")
             .style("background", "#ffffff")
-            .style("color", "#2c3e50")
+            .style("color", "#ecf0f1")
             .style("padding", "10px")
             .style("border", "1px solid #ccc")
             .style("border-radius", "8px")
@@ -476,9 +476,9 @@ function createChoroplethMap(data, geoData, attr, container, title, colorScheme)
                         <div style="font-weight: bold; font-size: 14px; margin-bottom: 5px;">
                             ${d.properties.name}
                         </div>
-                        <div style="font-size: 12px;">
+                        <div style="font-size: 12px; color: white">
                             ${formattedMapTitle}:
-                            <span style="font-weight: bold; color: #2c3e50;">
+                            <span style="font-weight: bold; color: white">
                                 ${d.properties.value !== undefined ? d.properties.value.toFixed(2) + '%' : 'No Data'}
                             </span>
                         </div>
